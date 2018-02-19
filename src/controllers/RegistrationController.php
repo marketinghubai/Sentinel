@@ -18,7 +18,9 @@ use Event;
 use Redirect;
 use Session;
 use Config;
-
+use App\Models\Emails;
+use DB;
+use App\User;
 class RegistrationController extends BaseController
 {
     /**
@@ -89,11 +91,17 @@ class RegistrationController extends BaseController
     public function activate($hash, $code)
     {
         // Decode the hashid
-        $id = $this->hashids->decode($hash)[0];
+        $id = $this->hashids->decode($hash)[0]; 
 
         // Attempt the activation
         $result = $this->userRepository->activate($id, $code);
 
+        //activation email entry in emails table
+        //user email
+        $userEmail = User::where('id', $id)->first(['email']); 
+        DB::table('emails')->where('userid', $id)->where('email','=',$userEmail->email)->update(['verified' =>'t', 'verification_code' => ""]);  
+         
+    
         // It worked!  Use config to determine where we should go.
         return $this->redirectViaResponse('registration_activated', $result);
     }
@@ -127,7 +135,7 @@ class RegistrationController extends BaseController
      * @return \Illuminate\View\View
      */
     public function forgotPasswordForm()
-    {
+    {    
         return $this->viewFinder('Sentinel::users.forgot');
     }
 
@@ -137,10 +145,10 @@ class RegistrationController extends BaseController
      * @return Response
      */
     public function sendResetPasswordEmail(EmailRequest $request)
-    {
+    {    
         // Send Password Reset Email
         $result = $this->userRepository->triggerPasswordReset(e($request->get('email')));
-
+        
         // It worked!  Use config to determine where we should go.
         return $this->redirectViaResponse('registration_reset_triggered', $result);
     }

@@ -122,7 +122,7 @@ return [
         'session_store'                => ['route' => 'home'],
         'session_destroy'              => ['action' => '\\Sentinel\Controllers\SessionController@create'],
         'registration_complete'        => ['route' => 'home'],
-        'registration_activated'       => ['route' => 'home'],
+        'registration_activated'       => ['route' => 'login'],
         'registration_resend'          => ['route' => 'home'],
         'registration_reset_triggered' => ['route' => 'home'],
         'registration_reset_invalid'   => ['route' => 'home'],
