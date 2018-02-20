@@ -227,7 +227,7 @@ class SentryUserRepository implements SentinelUserRepositoryInterface, UserProvi
                 $this->dispatcher->fire('sentinel.user.activated', ['user' => $user]);
 
                 // Generate login url
-                $url = '/';
+                $url = '/login';
 
                 return new SuccessResponse(trans('Sentinel::users.activated', array('url' => $url)), ['user' => $user]);
             }
