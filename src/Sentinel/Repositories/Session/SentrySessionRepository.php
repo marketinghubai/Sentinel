@@ -51,34 +51,39 @@ class SentrySessionRepository implements SentinelSessionRepositoryInterface
             // Check for 'rememberMe' in POST data
             $rememberMe = isset($data['rememberMe']);
 
-            // Set login credentials
-            $credentials['password'] = e($data['password']);
-            $credentials['email']    = isset($data['email']) ? e($data['email']) : '';
+            if(empty($data['user'])) {
+                // Set login credentials
+                $credentials['password'] = e($data['password']);
+                $credentials['email']    = isset($data['email']) ? e($data['email']) : '';
 
-            // Should we check for a username?
-            if (Config::get('Sentinel::auth.allow_usernames', false) && isset($data['username'])) {
-                $credentials['username'] = e($data['username']);
+                // Should we check for a username?
+                if (Config::get('Sentinel::auth.allow_usernames', false) && isset($data['username'])) {
+                    $credentials['username'] = e($data['username']);
+                }
+
+                // If the email address is blank or not valid, try using the username as the primary login credential
+                if (!$this->validEmail($credentials['email'])) {
+                    // Tell sentry to look for a username when attempting login
+                    $this->sentryUserProvider->getEmptyUser()->setLoginAttributeName('username');
+
+                    // Remove the email credential
+                    unset($credentials['email']);
+
+                    // Set the 'username' credential
+                    $credentials['username'] = (isset($credentials['username']) ? $credentials['username'] : e($data['email']));
+                }
+
+                //Check for suspension or banned status
+                $user     = $this->sentryUserProvider->findByCredentials($credentials);
+                $throttle = $this->sentryThrottleProvider->findByUserId($user->id);
+                $throttle->check();
+
+                // Try to authenticate the user
+                $user = $this->sentry->authenticate($credentials, $rememberMe);
+            } else {
+                $user = $data['user'];
+                $this->sentry->loginAndRemember($user);
             }
-
-            // If the email address is blank or not valid, try using the username as the primary login credential
-            if (!$this->validEmail($credentials['email'])) {
-                // Tell sentry to look for a username when attempting login
-                $this->sentryUserProvider->getEmptyUser()->setLoginAttributeName('username');
-
-                // Remove the email credential
-                unset($credentials['email']);
-
-                // Set the 'username' credential
-                $credentials['username'] = (isset($credentials['username']) ? $credentials['username'] : e($data['email']));
-            }
-
-            //Check for suspension or banned status
-            $user     = $this->sentryUserProvider->findByCredentials($credentials);
-            $throttle = $this->sentryThrottleProvider->findByUserId($user->id);
-            $throttle->check();
-
-            // Try to authenticate the user
-            $user = $this->sentry->authenticate($credentials, $rememberMe);
 
             // Might be unnecessary, but just in case:
             $this->sentryUserProvider->getEmptyUser()->setLoginAttributeName('email');
